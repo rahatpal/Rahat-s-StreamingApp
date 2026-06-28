@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: streamingapp-frontend
+  namespace: streamingapp
+spec:
+  selector:
+    app: streamingapp-frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: {{ .Values.frontend.containerPort }}
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: streamingapp-auth
+  namespace: streamingapp
+spec:
+  selector:
+    app: streamingapp-auth
+  ports:
+    - protocol: TCP
+      port: {{ .Values.auth.servicePort }}
+      targetPort: {{ .Values.auth.containerPort }}
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: streamingapp-streaming
+  namespace: streamingapp
+spec:
+  selector:
+    app: streamingapp-streaming
+  ports:
+    - protocol: TCP
+      port: {{ .Values.streaming.servicePort }}
+      targetPort: {{ .Values.streaming.containerPort }}
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: streamingapp-admin
+  namespace: streamingapp
+spec:
+  selector:
+    app: streamingapp-admin
+  ports:
+    - protocol: TCP
+      port: {{ .Values.admin.servicePort }}
+      targetPort: {{ .Values.admin.containerPort }}
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: streamingapp-chat
+  namespace: streamingapp
+spec:
+  selector:
+    app: streamingapp-chat
+  ports:
+    - protocol: TCP
+      port: {{ .Values.chat.servicePort }}
+      targetPort: {{ .Values.chat.containerPort }}
+  type: ClusterIP

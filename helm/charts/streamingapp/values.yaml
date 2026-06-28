@@ -1,0 +1,17 @@
+imageTag: latest
+replicaCount: 1
+frontend:
+  servicePort: 80
+  containerPort: 80
+auth:
+  servicePort: 3001
+  containerPort: 3001
+streaming:
+  servicePort: 3002
+  containerPort: 3002
+admin:
+  servicePort: 3003
+  containerPort: 3003
+chat:
+  servicePort: 3004
+  containerPort: 3004

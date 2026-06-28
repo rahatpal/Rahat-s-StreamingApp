@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streamingapp-frontend
+  namespace: streamingapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: streamingapp-frontend
+  template:
+    metadata:
+      labels:
+        app: streamingapp-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: {{ .Values.imageTag | default "latest" }}
+        ports:
+        - containerPort: {{ .Values.frontend.containerPort }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streamingapp-auth
+  namespace: streamingapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: streamingapp-auth
+  template:
+    metadata:
+      labels:
+        app: streamingapp-auth
+    spec:
+      containers:
+      - name: auth
+        image: {{ .Values.imageTag | default "latest" }}
+        ports:
+        - containerPort: {{ .Values.auth.containerPort }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streamingapp-streaming
+  namespace: streamingapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: streamingapp-streaming
+  template:
+    metadata:
+      labels:
+        app: streamingapp-streaming
+    spec:
+      containers:
+      - name: streaming
+        image: {{ .Values.imageTag | default "latest" }}
+        ports:
+        - containerPort: {{ .Values.streaming.containerPort }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streamingapp-admin
+  namespace: streamingapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: streamingapp-admin
+  template:
+    metadata:
+      labels:
+        app: streamingapp-admin
+    spec:
+      containers:
+      - name: admin
+        image: {{ .Values.imageTag | default "latest" }}
+        ports:
+        - containerPort: {{ .Values.admin.containerPort }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streamingapp-chat
+  namespace: streamingapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: streamingapp-chat
+  template:
+    metadata:
+      labels:
+        app: streamingapp-chat
+    spec:
+      containers:
+      - name: chat
+        image: {{ .Values.imageTag | default "latest" }}
+        ports:
+        - containerPort: {{ .Values.chat.containerPort }}
