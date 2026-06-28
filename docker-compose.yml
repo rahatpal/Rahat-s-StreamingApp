@@ -1,22 +1,23 @@
-version: "3.9"
-
 services:
-  mongo:
-    image: mongo:6
+  mongodb:
+    image: mongo:latest
+    container_name: streaming-mongodb
     restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+    networks:
+      - streaming-network
 
-  auth:
+  auth-service:
     build:
       context: ./backend/authService
     depends_on:
-      - mongo
+      - mongodb
     environment:
       PORT: 3001
-      MONGO_URI: mongodb://mongo:27017/${MONGO_DB:-streamingapp}
+      MONGO_URI: mongodb://mongodb:27017/${MONGO_DB:-streamingapp}
       JWT_SECRET: ${JWT_SECRET:-changeme}
       CLIENT_URLS: ${CLIENT_URLS:-http://localhost:3000}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
@@ -25,16 +26,18 @@ services:
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
     ports:
       - "${AUTH_PORT:-3001}:3001"
+    networks:
+      - streaming-network
 
   streaming:
     build:
-      context: ./backend
-      dockerfile: streamingService/Dockerfile
+      context: ./backend/streamingService
+      dockerfile: Dockerfile
     depends_on:
-      - mongo
+      - mongodb
     environment:
       PORT: 3002
-      MONGO_URI: mongodb://mongo:27017/${MONGO_DB:-streamingapp}
+      MONGO_URI: mongodb://mongodb:27017/${MONGO_DB:-streamingapp}
       JWT_SECRET: ${JWT_SECRET:-changeme}
       CLIENT_URLS: ${CLIENT_URLS:-http://localhost:3000}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
@@ -45,16 +48,18 @@ services:
       STREAMING_PUBLIC_URL: ${STREAMING_PUBLIC_URL:-http://localhost:3002}
     ports:
       - "${STREAMING_PORT:-3002}:3002"
+    networks:
+      - streaming-network
 
   admin:
     build:
-      context: ./backend
-      dockerfile: adminService/Dockerfile
+      context: ./backend/adminService
+      dockerfile: Dockerfile
     depends_on:
-      - mongo
+      - mongodb
     environment:
       PORT: 3003
-      MONGO_URI: mongodb://mongo:27017/${MONGO_DB:-streamingapp}
+      MONGO_URI: mongodb://mongodb:27017/${MONGO_DB:-streamingapp}
       JWT_SECRET: ${JWT_SECRET:-changeme}
       CLIENT_URLS: ${CLIENT_URLS:-http://localhost:3000}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
@@ -64,20 +69,24 @@ services:
       AWS_CDN_URL: ${AWS_CDN_URL:-}
     ports:
       - "${ADMIN_PORT:-3003}:3003"
+    networks:
+      - streaming-network
 
   chat:
     build:
-      context: ./backend
-      dockerfile: chatService/Dockerfile
+      context: ./backend/chatService
+      dockerfile: Dockerfile
     depends_on:
-      - mongo
+      - mongodb
     environment:
       PORT: 3004
-      MONGO_URI: mongodb://mongo:27017/${MONGO_DB:-streamingapp}
+      MONGO_URI: mongodb://mongodb:27017/${MONGO_DB:-streamingapp}
       JWT_SECRET: ${JWT_SECRET:-changeme}
       CLIENT_URLS: ${CLIENT_URLS:-http://localhost:3000}
     ports:
       - "${CHAT_PORT:-3004}:3004"
+    networks:
+      - streaming-network
 
   frontend:
     build:
@@ -90,12 +99,18 @@ services:
         REACT_APP_CHAT_API_URL: ${REACT_APP_CHAT_API_URL:-http://localhost:3004/api/chat}
         REACT_APP_CHAT_SOCKET_URL: ${REACT_APP_CHAT_SOCKET_URL:-http://localhost:3004}
     depends_on:
-      - auth
+      - auth-service
       - streaming
       - admin
       - chat
     ports:
       - "3000:80"
+    networks:
+      - streaming-network
 
 volumes:
   mongo-data:
+
+networks:
+  streaming-network:
+    driver: bridge
