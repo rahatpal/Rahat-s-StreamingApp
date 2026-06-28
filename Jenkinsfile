@@ -20,22 +20,25 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
-                script {Build
-                    // Install nvm and Node.js 16 directly in the shell
+                script {
                     sh '''
                         # Install nvm
                         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
                         # Load nvm
                         export NVM_DIR="$HOME/.nvm"
-                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+
                         # Install and use Node.js 16
                         nvm install 16
                         nvm use 16
+
                         # Install and build frontend
                         cd frontend
                         npm ci
                         npm run build
-                        # Archive build
+
+                        # Archive build output
                         mkdir -p /var/lib/jenkins/workspace/Rahat's StreamingApp-Pipeline/frontend/build
                         cp -r build/* /var/lib/jenkins/workspace/Rahat's StreamingApp-Pipeline/frontend/build/
                     '''
@@ -48,11 +51,18 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        # Install nvm
                         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
+                        # Load nvm
                         export NVM_DIR="$HOME/.nvm"
-                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+
+                        # Install and use Node.js 16
                         nvm install 16
                         nvm use 16
+
+                        # Install dependencies for all backend services
                         cd backend/authService && npm ci
                         cd ../streamingService && npm ci
                         cd ../adminService && npm ci
