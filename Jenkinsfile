@@ -1,6 +1,5 @@
 pipeline {
     agent any
-
     environment {
         AWS_CREDENTIALS_ID = 'aws-creds'
         ECR_REGISTRY = '332779205001.dkr.ecr.us-east-1.amazonaws.com'
@@ -21,27 +20,21 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
-                script {
-                    // Use official Node.js 16 Docker image to build frontend
-                    docker.image('node:16-alpine').inside {
-                        sh 'cd frontend && npm ci'
-                        sh 'cd frontend && npm run build'
-                        archiveArtifacts artifacts: 'frontend/build/**', fingerprint: true
-                    }
+                container('node:16-alpine') {
+                    sh 'cd frontend && npm ci'
+                    sh 'cd frontend && npm run build'
+                    archiveArtifacts artifacts: 'frontend/build/**', fingerprint: true
                 }
             }
         }
 
         stage('Build Backend Services') {
             steps {
-                script {
-                    // Use Node.js container to install backend deps
-                    docker.image('node:16-alpine').inside {
-                        sh 'cd backend/authService && npm ci'
-                        sh 'cd backend/streamingService && npm ci'
-                        sh 'cd backend/adminService && npm ci'
-                        sh 'cd backend/chatService && npm ci'
-                    }
+                container('node:16-alpine') {
+                    sh 'cd backend/authService && npm ci'
+                    sh 'cd backend/streamingService && npm ci'
+                    sh 'cd backend/adminService && npm ci'
+                    sh 'cd backend/chatService && npm ci'
                 }
             }
         }
@@ -49,9 +42,8 @@ pipeline {
         stage('Login to ECR & Push Images') {
             steps {
                 script {
-                    // This will fail in HeroVired — but we log it as expected
                     echo "⚠️ Docker build/push skipped: Jenkins sandbox does not support Docker daemon"
-                    echo "✅ Frontend build and backend deps completed. Manually build and push images to ECR using your local machine."
+                    echo "✅ Frontend and backend dependencies built. Manually build and push images to ECR using your local machine."
                 }
             }
         }
@@ -59,7 +51,6 @@ pipeline {
         stage('Send SNS Alert') {
             steps {
                 script {
-                    // This will work if AWS credentials are configured
                     try {
                         awsSnsPublish(
                             credentialId: env.AWS_CREDENTIALS_ID,
