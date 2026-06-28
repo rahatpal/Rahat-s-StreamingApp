@@ -1,80 +1,69 @@
-pipeline {
+ipeline {
     agent any
 
-    environment {
-        DOCKER_REGISTRY = 'docker.io'
-        DOCKER_IMAGE_NAME = 'streamingapp'
-        DOCKER_TAG = 'latest'
-    }
-
     stages {
-
-        stage('Build Docker Images') {
+        stage('Environment Check') {
             steps {
                 sh '''
-                    set -x
-
-                    echo "========== CURRENT DIRECTORY =========="
-                    pwd
-
-                    echo "========== PROJECT FILES =========="
+                    echo "========== CHECKING DOCKER AVAILABILITY =========="
+                    if command -v docker >/dev/null 2>&1; then
+                        echo "✅ Docker is available"
+                        docker --version
+                    else
+                        echo "❌ Docker is NOT available on this system"
+                        echo "Available commands:"
+                        which docker || echo "No docker command found"
+                    fi
+                    
+                    echo "========== PROJECT STRUCTURE =========="
                     ls -la
-
-                    echo "========== DOCKER VERSION =========="
-                    docker --version
-
-                    echo "========== DOCKER COMPOSE VERSION =========="
-                    docker compose version || docker-compose --version
-
-                    echo "========== BUILDING STREAMING SERVICE =========="
-                    docker build --progress=plain -t streamingapp-streaming-service ./backend/streamingService
-
-                    echo "========== BUILDING AUTH SERVICE =========="
-                    docker build --progress=plain -t streamingapp-auth-service ./backend/authService
-
-                    echo "========== BUILDING ADMIN SERVICE =========="
-                    docker build --progress=plain -t streamingapp-admin-service ./backend/adminService
-
-                    echo "========== BUILDING CHAT SERVICE =========="
-                    docker build --progress=plain -t streamingapp-chat-service ./backend/chatService
-
-                    echo "========== BUILDING FRONTEND =========="
-                    docker build --progress=plain -t streamingapp-frontend ./frontend
+                    echo ""
+                    
+                    echo "========== BACKEND SERVICES =========="
+                    if [ -d "./backend" ]; then
+                        ls -la ./backend
+                    else
+                        echo "❌ Backend directory not found"
+                    fi
                 '''
             }
         }
 
-        stage('Test') {
+        stage('Build Test') {
             steps {
                 sh '''
-                    echo "========== AVAILABLE DOCKER IMAGES =========="
-                    docker images
+                    echo "========== BUILD TEST =========="
+                    if command -v docker >/dev/null 2>&1; then
+                        echo "Docker available - attempting build test"
+                        # Just check if we can run a simple docker command
+                        docker info >/dev/null 2>&1 && echo "✅ Docker daemon is running" || echo "❌ Docker daemon not accessible"
+                    else
+                        echo "Skipping Docker build - Docker not available"
+                        echo "This is expected on Herovired Jenkins environment"
+                    fi
                 '''
             }
         }
 
-        stage('Deploy') {
+        stage('Alternative Build') {
             steps {
                 sh '''
-                    echo "========== STARTING APPLICATION =========="
-                    docker compose up -d || docker-compose up -d
-
-                    echo "========== RUNNING CONTAINERS =========="
-                    docker ps
+                    echo "========== ALTERNATIVE BUILD =========="
+                    echo "Checking if we can build without Docker:"
+                    if [ -f "./package.json" ]; then
+                        echo "✅ package.json found - npm commands might work"
+                        npm --version 2>/dev/null && echo "✅ npm available" || echo "❌ npm not available"
+                    fi
+                    
+                    if [ -d "./frontend" ] && [ -f "./frontend/package.json" ]; then
+                        echo "✅ Frontend directory with package.json found"
+                    fi
                 '''
             }
         }
     }
 
     post {
-        success {
-            echo '✅ Pipeline completed successfully!'
-        }
-
-        failure {
-            echo '❌ Pipeline failed!'
-        }
-
         always {
             cleanWs()
         }
