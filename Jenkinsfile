@@ -20,9 +20,25 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
-                container('node:16-alpine') {
-                    sh 'cd frontend && npm ci'
-                    sh 'cd frontend && npm run build'
+                script {Build
+                    // Install nvm and Node.js 16 directly in the shell
+                    sh '''
+                        # Install nvm
+                        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+                        # Load nvm
+                        export NVM_DIR="$HOME/.nvm"
+                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        # Install and use Node.js 16
+                        nvm install 16
+                        nvm use 16
+                        # Install and build frontend
+                        cd frontend
+                        npm ci
+                        npm run build
+                        # Archive build
+                        mkdir -p /var/lib/jenkins/workspace/Rahat's StreamingApp-Pipeline/frontend/build
+                        cp -r build/* /var/lib/jenkins/workspace/Rahat's StreamingApp-Pipeline/frontend/build/
+                    '''
                     archiveArtifacts artifacts: 'frontend/build/**', fingerprint: true
                 }
             }
@@ -30,11 +46,18 @@ pipeline {
 
         stage('Build Backend Services') {
             steps {
-                container('node:16-alpine') {
-                    sh 'cd backend/authService && npm ci'
-                    sh 'cd backend/streamingService && npm ci'
-                    sh 'cd backend/adminService && npm ci'
-                    sh 'cd backend/chatService && npm ci'
+                script {
+                    sh '''
+                        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+                        export NVM_DIR="$HOME/.nvm"
+                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        nvm install 16
+                        nvm use 16
+                        cd backend/authService && npm ci
+                        cd ../streamingService && npm ci
+                        cd ../adminService && npm ci
+                        cd ../chatService && npm ci
+                    '''
                 }
             }
         }
