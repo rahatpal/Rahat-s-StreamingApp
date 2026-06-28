@@ -322,11 +322,13 @@ post {
         sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_STREAMING}:${env.IMAGE_TAG} || true'
         sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_ADMIN}:${env.IMAGE_TAG} || true'
         sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_CHAT}:${env.IMAGE_TAG} || true'
-    }
+            }
     success {
         echo "✅ Deployment successful! Frontend URL: \$(kubectl get svc streamingapp-frontend -n streamingapp -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-    }
+            }
     failure {
         echo "❌ Deployment failed!"
+            }
+        }       
     }
 }
