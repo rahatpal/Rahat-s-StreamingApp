@@ -11,38 +11,68 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                sh 'docker build -t streamingapp-streaming-service ./backend/streamingService'
-                sh 'docker build -t streamingapp-auth-service ./backend/authService'
-                sh 'docker build -t streamingapp-admin-service ./backend/adminService'
-                sh 'docker build -t streamingapp-chat-service ./backend/chatService'
-                sh 'docker build -t streamingapp-frontend ./frontend'
+                sh '''
+                    set -x
+
+                    echo "========== CURRENT DIRECTORY =========="
+                    pwd
+
+                    echo "========== PROJECT FILES =========="
+                    ls -la
+
+                    echo "========== DOCKER VERSION =========="
+                    docker --version
+
+                    echo "========== DOCKER COMPOSE VERSION =========="
+                    docker compose version || docker-compose --version
+
+                    echo "========== BUILDING STREAMING SERVICE =========="
+                    docker build --progress=plain -t streamingapp-streaming-service ./backend/streamingService
+
+                    echo "========== BUILDING AUTH SERVICE =========="
+                    docker build --progress=plain -t streamingapp-auth-service ./backend/authService
+
+                    echo "========== BUILDING ADMIN SERVICE =========="
+                    docker build --progress=plain -t streamingapp-admin-service ./backend/adminService
+
+                    echo "========== BUILDING CHAT SERVICE =========="
+                    docker build --progress=plain -t streamingapp-chat-service ./backend/chatService
+
+                    echo "========== BUILDING FRONTEND =========="
+                    docker build --progress=plain -t streamingapp-frontend ./frontend
+                '''
             }
         }
 
         stage('Test') {
             steps {
-                sh 'echo "Running basic validation..."'
-                sh 'docker images'
+                sh '''
+                    echo "========== AVAILABLE DOCKER IMAGES =========="
+                    docker images
+                '''
             }
         }
 
         stage('Deploy') {
             steps {
-                sh 'echo "Deploying application using Docker Compose..."'
-                sh 'docker compose up -d'
+                sh '''
+                    echo "========== STARTING APPLICATION =========="
+                    docker compose up -d || docker-compose up -d
+
+                    echo "========== RUNNING CONTAINERS =========="
+                    docker ps
+                '''
             }
         }
-
     }
 
     post {
-
         success {
-            echo 'Pipeline completed successfully!'
+            echo '✅ Pipeline completed successfully!'
         }
 
         failure {
-            echo 'Pipeline failed!'
+            echo '❌ Pipeline failed!'
         }
 
         always {
