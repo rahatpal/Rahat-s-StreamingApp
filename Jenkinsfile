@@ -42,7 +42,6 @@ pipeline {
                 script {
                     // Build frontend
                     sh 'cd frontend && docker build -t ${env.ECR_REGISTRY}/${env.REPO_FRONTEND}:${env.IMAGE_TAG} .'
-                    
                     // Build backend services
                     sh 'cd backend/authService && docker build -t ${env.ECR_REGISTRY}/${env.REPO_AUTH}:${env.IMAGE_TAG} .'
                     sh 'cd backend/streamingService && docker build -t ${env.ECR_REGISTRY}/${env.REPO_STREAMING}:${env.IMAGE_TAG} .'
@@ -68,20 +67,16 @@ pipeline {
                     sh 'docker push ${env.ECR_REGISTRY}/${env.REPO_FRONTEND}:${env.IMAGE_TAG}'
                     sh 'docker tag ${env.ECR_REGISTRY}/${env.REPO_FRONTEND}:${env.IMAGE_TAG} ${env.ECR_REGISTRY}/${env.REPO_FRONTEND}:latest'
                     sh 'docker push ${env.ECR_REGISTRY}/${env.REPO_FRONTEND}:latest'
-                    
                     // Push backend services
                     sh 'docker push ${env.ECR_REGISTRY}/${env.REPO_AUTH}:${env.IMAGE_TAG}'
                     sh 'docker tag ${env.ECR_REGISTRY}/${env.REPO_AUTH}:${env.IMAGE_TAG} ${env.ECR_REGISTRY}/${env.REPO_AUTH}:latest'
                     sh 'docker push ${env.ECR_REGISTRY}/${env.REPO_AUTH}:latest'
-                    
                     sh 'docker push ${env.ECR_REGISTRY}/${env.REPO_STREAMING}:${env.IMAGE_TAG}'
                     sh 'docker tag ${env.ECR_REGISTRY}/${env.REPO_STREAMING}:${env.IMAGE_TAG} ${env.ECR_REGISTRY}/${env.REPO_STREAMING}:latest'
                     sh 'docker push ${env.ECR_REGISTRY}/${env.REPO_STREAMING}:latest'
-                    
                     sh 'docker push ${env.ECR_REGISTRY}/${env.REPO_ADMIN}:${env.IMAGE_TAG}'
                     sh 'docker tag ${env.ECR_REGISTRY}/${env.REPO_ADMIN}:${env.IMAGE_TAG} ${env.ECR_REGISTRY}/${env.REPO_ADMIN}:latest'
                     sh 'docker push ${env.ECR_REGISTRY}/${env.REPO_ADMIN}:latest'
-                    
                     sh 'docker push ${env.ECR_REGISTRY}/${env.REPO_CHAT}:${env.IMAGE_TAG}'
                     sh 'docker tag ${env.ECR_REGISTRY}/${env.REPO_CHAT}:${env.IMAGE_TAG} ${env.ECR_REGISTRY}/${env.REPO_CHAT}:latest'
                     sh 'docker push ${env.ECR_REGISTRY}/${env.REPO_CHAT}:latest'
@@ -94,7 +89,6 @@ pipeline {
                 script {
                     // Create helm directory if missing
                     sh 'mkdir -p helm/charts/streamingapp'
-                    
                     // Create basic Helm values.yaml if missing
                     sh '''cat > helm/charts/streamingapp/values.yaml << EOF
 imageTag: ${env.IMAGE_TAG}
@@ -115,7 +109,6 @@ chat:
   servicePort: 3004
   containerPort: 3004
 EOF'''
-                    
                     // Create basic Helm templates (minimal deployment)
                     sh '''mkdir -p helm/charts/streamingapp/templates
 cat > helm/charts/streamingapp/templates/deployment.yaml << 'EOF'
@@ -224,7 +217,6 @@ spec:
         ports:
         - containerPort: 3004
 EOF'''
-                    
                     // Create service templates
                     sh '''cat > helm/charts/streamingapp/templates/service.yaml << 'EOF'
 apiVersion: v1
@@ -253,6 +245,7 @@ spec:
     - protocol: TCP
       port: 3001
       targetPort: 3001
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
@@ -266,6 +259,7 @@ spec:
     - protocol: TCP
       port: 3002
       targetPort: 3002
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
@@ -279,6 +273,7 @@ spec:
     - protocol: TCP
       port: 3003
       targetPort: 3003
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
@@ -292,8 +287,8 @@ spec:
     - protocol: TCP
       port: 3004
       targetPort: 3004
+  type: ClusterIP
 EOF'''
-                    
                     // Create namespace and deploy
                     sh 'kubectl create namespace streamingapp --dry-run=client -o yaml | kubectl apply -f -'
                     sh 'helm upgrade --install streamingapp helm/charts/streamingapp --namespace streamingapp --create-namespace'
@@ -315,20 +310,19 @@ EOF'''
         }
     }
 
-post {
-    always {
-        sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_FRONTEND}:${env.IMAGE_TAG} || true'
-        sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_AUTH}:${env.IMAGE_TAG} || true'
-        sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_STREAMING}:${env.IMAGE_TAG} || true'
-        sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_ADMIN}:${env.IMAGE_TAG} || true'
-        sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_CHAT}:${env.IMAGE_TAG} || true'
-            }
-    success {
-        echo "✅ Deployment successful! Frontend URL: \$(kubectl get svc streamingapp-frontend -n streamingapp -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-            }
-    failure {
-        echo "❌ Deployment failed!"
-            }
-        }       
+    post {
+        always {
+            sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_FRONTEND}:${env.IMAGE_TAG} || true'
+            sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_AUTH}:${env.IMAGE_TAG} || true'
+            sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_STREAMING}:${env.IMAGE_TAG} || true'
+            sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_ADMIN}:${env.IMAGE_TAG} || true'
+            sh 'docker rmi ${env.ECR_REGISTRY}/${env.REPO_CHAT}:${env.IMAGE_TAG} || true'
+        }
+        success {
+            echo "✅ Deployment successful! Frontend URL: \$(kubectl get svc streamingapp-frontend -n streamingapp -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+        }
+        failure {
+            echo "❌ Deployment failed!"
+        }
     }
 }
