@@ -20,25 +20,25 @@ services:
       REACT_APP_CHAT_API_URL: http://chat-service:3004
 
   auth:
-    name: auth
+    name: auth-service
     image: auth-service
     port: 3001
     type: ClusterIP
 
   streaming:
-    name: streaming
+    name: streaming-service
     image: streaming-service
     port: 3002
     type: ClusterIP
 
   admin:
-    name: admin
+    name: admin-service
     image: admin-service
     port: 3003
     type: ClusterIP
 
   chat:
-    name: chat
+    name: chat-service
     image: chat-service
     port: 3004
     type: ClusterIP
