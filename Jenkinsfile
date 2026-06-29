@@ -4,7 +4,7 @@ pipeline {
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
         ECR_REGISTRY = '332779205001.dkr.ecr.us-east-1.amazonaws.com'
-        EKS_CLUSTER_NAME = 'streamingapp-cluster'
+        EKS_CLUSTER_NAME = 'rahatstreamingapp-cluster'
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
