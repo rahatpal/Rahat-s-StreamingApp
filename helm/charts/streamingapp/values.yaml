@@ -10,7 +10,7 @@ mongodb:
 services:
   frontend:
     name: frontend
-    image: streamingapp-frontend
+    image: frontend
     port: 80
     type: LoadBalancer
     env:
@@ -21,24 +21,24 @@ services:
 
   auth:
     name: auth
-    image: streamingapp-auth
+    image: auth-service
     port: 3001
     type: ClusterIP
 
   streaming:
     name: streaming
-    image: streamingapp-streaming
+    image: streaming-service
     port: 3002
     type: ClusterIP
 
   admin:
     name: admin
-    image: streamingapp-admin
+    image: admin-service
     port: 3003
     type: ClusterIP
 
   chat:
     name: chat
-    image: streamingapp-chat
+    image: chat-service
     port: 3004
     type: ClusterIP

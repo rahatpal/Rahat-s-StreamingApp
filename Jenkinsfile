@@ -29,7 +29,7 @@ pipeline {
                 stage('Build Frontend Image') {
                     steps {
                         sh '''
-                            docker build -t ${ECR_REGISTRY}/streamingapp-frontend:${IMAGE_TAG} \
+                            docker build -t ${ECR_REGISTRY}/frontend:${IMAGE_TAG} \
                               --build-arg REACT_APP_AUTH_API_URL=http://auth-service:3001 \
                               --build-arg REACT_APP_STREAMING_API_URL=http://streaming-service:3002 \
                               --build-arg REACT_APP_ADMIN_API_URL=http://admin-service:3003 \
@@ -40,22 +40,22 @@ pipeline {
                 }
                 stage('Build Auth Image') {
                     steps {
-                        sh 'docker build -t ${ECR_REGISTRY}/streamingapp-auth:${IMAGE_TAG} -f backend/authService/Dockerfile backend/authService/'
+                        sh 'docker build -t ${ECR_REGISTRY}/auth-service:${IMAGE_TAG} -f backend/authService/Dockerfile backend/authService/'
                     }
                 }
                 stage('Build Streaming Image') {
                     steps {
-                        sh 'docker build -t ${ECR_REGISTRY}/streamingapp-streaming:${IMAGE_TAG} -f backend/streamingService/Dockerfile backend/streamingService/'
+                        sh 'docker build -t ${ECR_REGISTRY}/streaming-service:${IMAGE_TAG} -f backend/streamingService/Dockerfile backend/streamingService/'
                     }
                 }
                 stage('Build Admin Image') {
                     steps {
-                        sh 'docker build -t ${ECR_REGISTRY}/streamingapp-admin:${IMAGE_TAG} -f backend/adminService/Dockerfile backend/adminService/'
+                        sh 'docker build -t ${ECR_REGISTRY}/admin-service:${IMAGE_TAG} -f backend/adminService/Dockerfile backend/adminService/'
                     }
                 }
                 stage('Build Chat Image') {
                     steps {
-                        sh 'docker build -t ${ECR_REGISTRY}/streamingapp-chat:${IMAGE_TAG} -f backend/chatService/Dockerfile backend/chatService/'
+                        sh 'docker build -t ${ECR_REGISTRY}/chat-service:${IMAGE_TAG} -f backend/chatService/Dockerfile backend/chatService/'
                     }
                 }
             }
@@ -64,7 +64,7 @@ pipeline {
         stage('Push to ECR') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'aws-creds',
+                    credentialsId: 'Rahat aws-creds',
                     usernameVariable: 'AWS_ACCESS_KEY_ID',
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
@@ -72,11 +72,11 @@ pipeline {
                         aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
                           docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
-                        docker push ${ECR_REGISTRY}/streamingapp-frontend:${IMAGE_TAG}
-                        docker push ${ECR_REGISTRY}/streamingapp-auth:${IMAGE_TAG}
-                        docker push ${ECR_REGISTRY}/streamingapp-streaming:${IMAGE_TAG}
-                        docker push ${ECR_REGISTRY}/streamingapp-admin:${IMAGE_TAG}
-                        docker push ${ECR_REGISTRY}/streamingapp-chat:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/frontend:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/auth-service:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/streaming-service:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/admin-service:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/chat-service:${IMAGE_TAG}
                     '''
                 }
             }
@@ -85,7 +85,7 @@ pipeline {
         stage('Deploy to EKS') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'aws-creds',
+                    credentialsId: 'Rahat aws-creds',
                     usernameVariable: 'AWS_ACCESS_KEY_ID',
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
@@ -103,7 +103,7 @@ pipeline {
         stage('Send SNS Alert') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'aws-creds',
+                    credentialsId: 'Rahat aws-creds',
                     usernameVariable: 'AWS_ACCESS_KEY_ID',
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
