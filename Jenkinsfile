@@ -97,7 +97,7 @@ pipeline {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'Rahat aws-creds']]) {
                     sh '''
                         aws sns publish \
-                          --topic-arn arn:aws:sns:us-east-1:332779205001:streamingapp-deploy-alerts \
+                          --topic-arn arn:aws:sns:us-east-1:332779205001:rahat-streamingapp-alerts \
                           --message "✅ StreamingApp build #${BUILD_NUMBER} deployed successfully to EKS" \
                           --subject "StreamingApp CI/CD Success"
                     '''
