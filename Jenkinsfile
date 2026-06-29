@@ -1,13 +1,10 @@
 pipeline {
     agent any
+
     environment {
-        AWS_CREDENTIALS_ID = 'aws-creds'
+        AWS_DEFAULT_REGION = 'us-east-1'
         ECR_REGISTRY = '332779205001.dkr.ecr.us-east-1.amazonaws.com'
-        REPO_FRONTEND = 'streamingapp-frontend'
-        REPO_AUTH = 'streamingapp-auth'
-        REPO_STREAMING = 'streamingapp-streaming'
-        REPO_ADMIN = 'streamingapp-admin'
-        REPO_CHAT = 'streamingapp-chat'
+        EKS_CLUSTER_NAME = 'streamingapp-cluster'
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
@@ -20,82 +17,102 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
-                script {
-                    sh '''
-                        # Install nvm
-                        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-
-                        # Load nvm
-                        export NVM_DIR="$HOME/.nvm"
-                        [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
-
-                        # Install and use Node.js 16
-                        nvm install 16
-                        nvm use 16
-
-                        # Install and build frontend
-                        cd frontend
-                        npm ci
-                        npm run build
-
-                        # Archive build output
-                        mkdir -p /var/lib/jenkins/workspace/Rahat's StreamingApp-Pipeline/frontend/build
-                        cp -r build/* /var/lib/jenkins/workspace/Rahat's StreamingApp-Pipeline/frontend/build/
-                    '''
-                    archiveArtifacts artifacts: 'frontend/build/**', fingerprint: true
+                dir('frontend') {
+                    sh 'npm ci'
+                    sh 'CI=false npm run build'
                 }
             }
         }
 
-        stage('Build Backend Services') {
+        stage('Build Docker Images') {
+            parallel {
+                stage('Build Frontend Image') {
+                    steps {
+                        sh '''
+                            docker build -t ${ECR_REGISTRY}/streamingapp-frontend:${IMAGE_TAG} \
+                              --build-arg REACT_APP_AUTH_API_URL=http://auth-service:3001 \
+                              --build-arg REACT_APP_STREAMING_API_URL=http://streaming-service:3002 \
+                              --build-arg REACT_APP_ADMIN_API_URL=http://admin-service:3003 \
+                              --build-arg REACT_APP_CHAT_API_URL=http://chat-service:3004 \
+                              -f frontend/Dockerfile frontend/
+                        '''
+                    }
+                }
+                stage('Build Auth Image') {
+                    steps {
+                        sh 'docker build -t ${ECR_REGISTRY}/streamingapp-auth:${IMAGE_TAG} -f backend/authService/Dockerfile backend/authService/'
+                    }
+                }
+                stage('Build Streaming Image') {
+                    steps {
+                        sh 'docker build -t ${ECR_REGISTRY}/streamingapp-streaming:${IMAGE_TAG} -f backend/streamingService/Dockerfile backend/streamingService/'
+                    }
+                }
+                stage('Build Admin Image') {
+                    steps {
+                        sh 'docker build -t ${ECR_REGISTRY}/streamingapp-admin:${IMAGE_TAG} -f backend/adminService/Dockerfile backend/adminService/'
+                    }
+                }
+                stage('Build Chat Image') {
+                    steps {
+                        sh 'docker build -t ${ECR_REGISTRY}/streamingapp-chat:${IMAGE_TAG} -f backend/chatService/Dockerfile backend/chatService/'
+                    }
+                }
+            }
+        }
+
+        stage('Push to ECR') {
             steps {
-                script {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-creds',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
                     sh '''
-                        # Install nvm
-                        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+                        aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
+                          docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
-                        # Load nvm
-                        export NVM_DIR="$HOME/.nvm"
-                        [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
-
-                        # Install and use Node.js 16
-                        nvm install 16
-                        nvm use 16
-
-                        # Install dependencies for all backend services
-                        cd backend/authService && npm ci
-                        cd ../streamingService && npm ci
-                        cd ../adminService && npm ci
-                        cd ../chatService && npm ci
+                        docker push ${ECR_REGISTRY}/streamingapp-frontend:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/streamingapp-auth:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/streamingapp-streaming:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/streamingapp-admin:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/streamingapp-chat:${IMAGE_TAG}
                     '''
                 }
             }
         }
 
-        stage('Login to ECR & Push Images') {
+        stage('Deploy to EKS') {
             steps {
-                script {
-                    echo "⚠️ Docker build/push skipped: Jenkins sandbox does not support Docker daemon"
-                    echo "✅ Frontend and backend dependencies built. Manually build and push images to ECR using your local machine."
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-creds',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
+                    sh '''
+                        aws eks update-kubeconfig --name ${EKS_CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}
+
+                        helm upgrade --install streamingapp helm/charts/streamingapp \
+                          --namespace streamingapp --create-namespace \
+                          --set imageTag=${IMAGE_TAG}
+                    '''
                 }
             }
         }
 
         stage('Send SNS Alert') {
             steps {
-                script {
-                    try {
-                        awsSnsPublish(
-                            credentialId: env.AWS_CREDENTIALS_ID,
-                            region: 'us-east-1',
-                            topicArn: 'arn:aws:sns:us-east-1:332779205001:streamingapp-deploy-alerts',
-                            message: "✅ CI Build ${env.BUILD_NUMBER} completed. Frontend built successfully. Deploy to EKS manually.",
-                            subject: "StreamingApp CI Success"
-                        )
-                        echo "✅ SNS notification sent."
-                    } catch (Exception e) {
-                        echo "⚠️ SNS notification failed (may be due to missing permissions). This is expected if SNS is not configured."
-                    }
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-creds',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
+                    sh '''
+                        aws sns publish \
+                          --topic-arn arn:aws:sns:us-east-1:332779205001:streamingapp-deploy-alerts \
+                          --message "✅ StreamingApp build #${BUILD_NUMBER} deployed successfully to EKS" \
+                          --subject "StreamingApp CI/CD Success"
+                    '''
                 }
             }
         }
@@ -103,12 +120,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Frontend and backend dependencies built successfully.'
-            echo '📌 Next: On your local machine, build Docker images from this repo and push to ECR.'
-            echo '📌 Then deploy to EKS using eksctl and Helm. Submit screenshots as proof.'
+            echo "✅ Pipeline completed: Frontend built, images pushed to ECR, Helm deployed to EKS"
         }
         failure {
-            echo '❌ Build failed. Check logs. Most likely: AWS SNS or Docker issues — but frontend build is fine.'
+            echo "❌ Pipeline failed. Check logs above."
         }
     }
 }

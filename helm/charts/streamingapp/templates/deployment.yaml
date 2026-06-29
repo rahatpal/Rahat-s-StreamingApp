@@ -1,104 +1,51 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: streamingapp-frontend
-  namespace: streamingapp
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: streamingapp-frontend
-  template:
-    metadata:
-      labels:
-        app: streamingapp-frontend
-    spec:
-      containers:
-      - name: frontend
-        image: {{ .Values.imageTag | default "latest" }}
-        ports:
-        - containerPort: {{ .Values.frontend.containerPort }}
+{{- range $key, $service := .Values.services }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: streamingapp-auth
-  namespace: streamingapp
+  name: {{ $service.name }}-deployment
+  namespace: {{ $.Values.namespace }}
 spec:
-  replicas: 1
+  replicas: {{ $.Values.replicaCount }}
   selector:
     matchLabels:
-      app: streamingapp-auth
+      app: {{ $service.name }}
   template:
     metadata:
       labels:
-        app: streamingapp-auth
+        app: {{ $service.name }}
     spec:
       containers:
-      - name: auth
-        image: {{ .Values.imageTag | default "latest" }}
-        ports:
-        - containerPort: {{ .Values.auth.containerPort }}
+        - name: {{ $service.name }}
+          image: "{{ $.Values.imageRegistry }}/{{ $service.image }}:{{ $.Values.imageTag }}"
+          ports:
+            - containerPort: {{ $service.port }}
+          {{- if $service.env }}
+          env:
+          {{- range $key, $value := $service.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: streamingapp-streaming
-  namespace: streamingapp
+  name: mongodb-deployment
+  namespace: {{ .Values.namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: streamingapp-streaming
+      app: mongodb
   template:
     metadata:
       labels:
-        app: streamingapp-streaming
+        app: mongodb
     spec:
       containers:
-      - name: streaming
-        image: {{ .Values.imageTag | default "latest" }}
-        ports:
-        - containerPort: {{ .Values.streaming.containerPort }}
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: streamingapp-admin
-  namespace: streamingapp
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: streamingapp-admin
-  template:
-    metadata:
-      labels:
-        app: streamingapp-admin
-    spec:
-      containers:
-      - name: admin
-        image: {{ .Values.imageTag | default "latest" }}
-        ports:
-        - containerPort: {{ .Values.admin.containerPort }}
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: streamingapp-chat
-  namespace: streamingapp
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: streamingapp-chat
-  template:
-    metadata:
-      labels:
-        app: streamingapp-chat
-    spec:
-      containers:
-      - name: chat
-        image: {{ .Values.imageTag | default "latest" }}
-        ports:
-        - containerPort: {{ .Values.chat.containerPort }}
+        - name: mongodb
+          image: "{{ .Values.mongodb.image }}"
+          ports:
+            - containerPort: {{ .Values.mongodb.port }}
